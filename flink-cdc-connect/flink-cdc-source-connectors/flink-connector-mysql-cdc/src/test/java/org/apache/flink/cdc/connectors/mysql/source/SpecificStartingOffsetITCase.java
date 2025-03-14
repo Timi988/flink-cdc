@@ -492,7 +492,8 @@ public class SpecificStartingOffsetITCase {
                         operator.getOperatorIdFuture(),
                         serializer,
                         accumulatorName,
-                        env.getCheckpointConfig());
+                        env.getCheckpointConfig(),
+                        10000L);
         CollectStreamSink<T> sink = new CollectStreamSink<>(stream, factory);
         sink.name("Data stream collect sink");
         env.addOperator(sink.getTransformation());
@@ -511,6 +512,19 @@ public class SpecificStartingOffsetITCase {
     }
 
     private static String buildMySqlConfigWithTimezone(File resourceDirectory, String timezone) {
+        // JVM timezone is in "GMT+XX:XX" or "GMT-XX:XX" format
+        // while MySQL configuration file requires "+XX:XX" or "-XX:XX"
+        if (timezone.startsWith("GMT")) {
+            timezone = timezone.substring(3);
+        }
+
+        // But if we run JVM with -Duser.timezone=GMT+0:00, the timezone String will be set to "GMT"
+        // (without redundant offset part). We can't pass an empty string to MySQL, or it will
+        // panic.
+        if (timezone.isEmpty()) {
+            timezone = "UTC";
+        }
+
         try {
             TemporaryFolder tempFolder = new TemporaryFolder(resourceDirectory);
             tempFolder.create();

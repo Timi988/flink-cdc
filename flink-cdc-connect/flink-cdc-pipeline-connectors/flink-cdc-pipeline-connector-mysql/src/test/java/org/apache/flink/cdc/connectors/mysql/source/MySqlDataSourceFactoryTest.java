@@ -37,12 +37,15 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.HOSTNAME;
+import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.PARSE_ONLINE_SCHEMA_CHANGES;
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.PASSWORD;
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.PORT;
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.SCAN_BINLOG_NEWLY_ADDED_TABLE_ENABLED;
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.SCAN_INCREMENTAL_SNAPSHOT_CHUNK_KEY_COLUMN;
+import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.SCAN_INCREMENTAL_SNAPSHOT_UNBOUNDED_CHUNK_FIRST_ENABLED;
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.TABLES;
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.TABLES_EXCLUDE;
+import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.TREAT_TINYINT1_AS_BOOLEAN_ENABLED;
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.USERNAME;
 import static org.apache.flink.cdc.connectors.mysql.source.config.MySqlSourceOptions.SCAN_NEWLY_ADDED_TABLE_ENABLED;
 import static org.apache.flink.cdc.connectors.mysql.testutils.MySqSourceTestUtils.TEST_PASSWORD;
@@ -243,6 +246,35 @@ public class MySqlDataSourceFactoryTest extends MySqlSourceTestBase {
                         "Unsupported options found for 'mysql'.\n\n"
                                 + "Unsupported options:\n\n"
                                 + "unsupported_key");
+    }
+
+    @Test
+    public void testOptionalOption() {
+        inventoryDatabase.createAndInitialize();
+        Map<String, String> options = new HashMap<>();
+        options.put(HOSTNAME.key(), MYSQL_CONTAINER.getHost());
+        options.put(PORT.key(), String.valueOf(MYSQL_CONTAINER.getDatabasePort()));
+        options.put(USERNAME.key(), TEST_USER);
+        options.put(PASSWORD.key(), TEST_PASSWORD);
+        options.put(TABLES.key(), inventoryDatabase.getDatabaseName() + ".prod\\.*");
+
+        // optional option
+        options.put(TREAT_TINYINT1_AS_BOOLEAN_ENABLED.key(), "false");
+        options.put(PARSE_ONLINE_SCHEMA_CHANGES.key(), "true");
+        options.put(SCAN_INCREMENTAL_SNAPSHOT_UNBOUNDED_CHUNK_FIRST_ENABLED.key(), "true");
+
+        Factory.Context context = new MockContext(Configuration.fromMap(options));
+        MySqlDataSourceFactory factory = new MySqlDataSourceFactory();
+        assertThat(factory.optionalOptions())
+                .contains(
+                        TREAT_TINYINT1_AS_BOOLEAN_ENABLED,
+                        PARSE_ONLINE_SCHEMA_CHANGES,
+                        SCAN_BINLOG_NEWLY_ADDED_TABLE_ENABLED);
+
+        MySqlDataSource dataSource = (MySqlDataSource) factory.createDataSource(context);
+        assertThat(dataSource.getSourceConfig().isTreatTinyInt1AsBoolean()).isFalse();
+        assertThat(dataSource.getSourceConfig().isParseOnLineSchemaChanges()).isTrue();
+        assertThat(dataSource.getSourceConfig().isAssignUnboundedChunkFirst()).isTrue();
     }
 
     @Test

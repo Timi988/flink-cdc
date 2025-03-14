@@ -125,7 +125,7 @@ public abstract class FlinkContainerTestEnvironment extends TestLogger {
         if (flinkVersion != null) {
             return Collections.singletonList(flinkVersion);
         } else {
-            return Arrays.asList("1.16.3", "1.17.2", "1.18.1", "1.19.1", "1.20.0");
+            return Arrays.asList("1.19.2", "1.20.1");
         }
     }
 
@@ -186,7 +186,8 @@ public abstract class FlinkContainerTestEnvironment extends TestLogger {
                             dockerClient.removeContainerCmd(container.getId()).exec();
                         });
 
-        // List all images and remove the ones that are not flink、mysql、testcontainers related.
+        // List all images and remove the ones that are not Flink, MySQL, and TestContainers
+        // related.
         dockerClient.listImagesCmd().exec().stream()
                 .filter(
                         image ->
